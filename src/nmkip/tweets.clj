@@ -1,7 +1,7 @@
 (ns nmkip.tweets
   (:require [nmkip.twitter-wrapper :as twitter]
             [clojure.pprint :refer [pprint]]
-            [clojure.core.async :refer [alt! go timeout] :as async]
+            [clojure.core.async :refer [alt! go-loop timeout]]
             [nmkip.server :refer [start hashtags-ch]])
   (:gen-class))
 
@@ -18,7 +18,7 @@
     (pprint unseen)))
 
 (defn -main [& args]
-  (async/go-loop [x 20]
+  (go-loop [x 20]
     (let [timeout-chan (timeout 20000)]
       (-> 
        (alt!

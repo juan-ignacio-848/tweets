@@ -2,7 +2,6 @@
   (:require [aleph.http :as http]
             [reitit.ring :as ring]
             [reitit.ring.middleware.parameters :as params]
-            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.core.async :as async]))
 
@@ -53,57 +52,3 @@
   (def s (start))
   (.close s)
 ,)
-
-(comment
-  (defn handler [_]
-    {:status 200, :body "ok"})
-
-  (defn wrap [handler id]
-    (fn [request]
-      (update (handler request) :via (fnil conj '()) id)))
-
-  (defn wrap-enforce-roles [handler]
-    (fn [{:keys [roles] :as request}]
-      (let [required (some-> request (ring/get-match) :data :roles)]
-        (if (and (seq required) (not (set/subset? required roles)))
-          {:status 403, :body "forbidden"}
-          (handler request)))))
-
-  (def app
-    (ring/ring-handler
-     (ring/router
-      ["/api" {:middleware [#(wrap % :api)]}
-       ["/ping" handler]
-       ["/admin" {:middleware [[wrap :admin]]
-                  :roles #{:admin}}
-        ["/ping" handler]
-        ["/db" {:middleware [[wrap :db]]
-                :delete {:middleware [[wrap :delete]]
-                         :handler handler}}]]]
-      {:data {:middleware [[wrap :top] [wrap-enforce-roles]]}}) ;; all routes
-     (ring/create-default-handler)))
-
-  (def app
-    (ring/ring-handler
-     (ring/router
-      ["/api"
-       ["/ping" handler]
-       ["/admin" {:roles #{:admin}}
-        ["/ping" handler]]]
-      {:data {:middleware [wrap-enforce-roles]}})))
-
-  (def s (http/start-server #'app {:port 10000}))
-,)
-
-(comment
-  (app {:request-method :delete :uri "/api/admin/db"})
-    
-  (app {:request-method :get :uri "/api/admin/db"})
-    
-  (app {:request-method :get :uri "/api/ping"})
-    
-  (app {:request-method :get :uri "/api/admin/ping"})
-  (app {:request-method :get :uri "/api/admin/ping" :roles #{:admin}})
-    
-  (.close s)
-  ,)
